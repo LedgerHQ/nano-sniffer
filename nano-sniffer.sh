@@ -37,13 +37,36 @@ then
 fi
 
 # shellcheck disable=2024
-sudo "$TSHARK" -i "usbmon${NANO_BUS}" -Y "usb.device_address == $NANO_DEV && usb.capdata" -T fields -e usb.endpoint_address.direction -e usb.capdata > "$OUTPUT_FILENAME"
+sudo "$TSHARK" -i "usbmon${NANO_BUS}" -Y "usb.device_address == $NANO_DEV && usb.capdata" \
+    -T fields \
+    -e frame.time_epoch \
+    -e usb.endpoint_address.direction \
+    -e usb.capdata \
+    > "$OUTPUT_FILENAME"
 
 # Modify the data for easier reading
-## Interpret the direction value
-sed 's/^0/OUT/g' -i "$OUTPUT_FILENAME"
-sed 's/^1/IN/g' -i "$OUTPUT_FILENAME"
+## Make a backup
+mv "$OUTPUT_FILENAME" "${OUTPUT_FILENAME}-tmp"
 ## Add a header
-echo -e "Dir\tRaw data\n" > "${OUTPUT_FILENAME}-tmp"
-cat "$OUTPUT_FILENAME" >> "${OUTPUT_FILENAME}-tmp"
-mv "${OUTPUT_FILENAME}-tmp" "$OUTPUT_FILENAME"
+echo -e "Timestamp\t\tDir\tData\n" > "${OUTPUT_FILENAME}"
+## Loop over each line
+while read -r line
+do
+    IFS=$'\t' read -r -a line_array <<< "$line"
+    TIMESTAMP=$(date -d @"${line_array[0]}" +"%H:%M:%S:%N")
+    DIRECTION=
+    case "${line_array[1]}" in
+        0)
+            DIRECTION=OUT
+            ;;
+        1)
+            DIRECTION=IN
+            ;;
+        *)
+            echo "Unknown direction (${line_array[1]})" >&2
+            ;;
+    esac
+    DATA="${line_array[2]}"
+    echo -e "$TIMESTAMP\t$DIRECTION\t$DATA" >> "$OUTPUT_FILENAME"
+done <"${OUTPUT_FILENAME}-tmp"
+rm "${OUTPUT_FILENAME}-tmp"
