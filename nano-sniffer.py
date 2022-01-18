@@ -22,10 +22,11 @@ for packet in capture.sniff_continuously():
 
     try:
         if (int(packet.usb.endpoint_address_direction) == 0):
-            direction = 'OUT'
+            direction = '=>'
         else:
-            direction = 'IN'
+            direction = '<='
         data = packet.data.usb_capdata.split(":")
-        print('%s\t%s\t%s' % (packet.sniff_time, direction, str(data)))
+        packet_length = int(data[6], 16)
+        print('[%s] HID %s %s' % (packet.sniff_time, direction, "".join(data[7:7+packet_length])))
     except:
         pass
