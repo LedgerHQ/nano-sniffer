@@ -38,3 +38,12 @@ fi
 
 # shellcheck disable=2024
 sudo "$TSHARK" -i "usbmon${NANO_BUS}" -Y "usb.device_address == $NANO_DEV && usb.capdata" -T fields -e usb.endpoint_address.direction -e usb.capdata > "$OUTPUT_FILENAME"
+
+# Modify the data for easier reading
+## Interpret the direction value
+sed 's/^0/OUT/g' -i "$OUTPUT_FILENAME"
+sed 's/^1/IN/g' -i "$OUTPUT_FILENAME"
+## Add a header
+echo -e "Dir\tRaw data\n" > "${OUTPUT_FILENAME}-tmp"
+cat "$OUTPUT_FILENAME" >> "${OUTPUT_FILENAME}-tmp"
+mv "${OUTPUT_FILENAME}-tmp" "$OUTPUT_FILENAME"
