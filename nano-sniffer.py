@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
+import os
 # Dependencies
 import pyshark
 import usb.core
 
+
+if os.geteuid() != 0:
+    print('Error: root required !')
+    exit(1)
 
 dev = usb.core.find(idVendor=0x2c97)
 if dev is None:
