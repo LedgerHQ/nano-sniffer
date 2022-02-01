@@ -67,6 +67,11 @@ for packet in capture.sniff_continuously():
 
         data = packet.data.usb_capdata.split(":")
 
+        # Sanity check (something is very wrong if this check fails)
+        if (int(data[APDU_DATA_MAGIC_OFFSET], 16) != APDU_MAGIC_VALUE):
+            print("Error unexpected value at magic offset! value != 0x%x\n" % (APDU_MAGIC_VALUE))
+            break
+
         # First chunk of an apdu
         if (len(apdu_buffer) == 0):
             apdu_length = int(data[APDU_DATA_LENGTH_OFFSET], 16) << 8 | \
