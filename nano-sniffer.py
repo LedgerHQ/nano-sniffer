@@ -27,9 +27,13 @@ if os.geteuid() != 0:
     print('Error: root required !')
     exit(1)
 
+# Data offset
+APDU_DATA_MAGIC_OFFSET = 2
 APDU_DATA_LENGTH_OFFSET = 5
 APDU_DATA_OFFSET_FIRST = 7
 APDU_DATA_OFFSET_FOLLW = 5
+
+APDU_MAGIC_VALUE = 0x5
 
 
 dev = usb.core.find(idVendor=0x2c97)
@@ -63,19 +67,15 @@ for packet in capture.sniff_continuously():
 
         data = packet.data.usb_capdata.split(":")
 
-        if (direction == '=>'):
-            # First chunk of an apdu
-            if (len(apdu_buffer) == 0):
-                apdu_length = int(data[APDU_DATA_LENGTH_OFFSET], 16) << 8 | \
-                              int(data[APDU_DATA_LENGTH_OFFSET + 1], 16)
-                apdu_buffer += data[APDU_DATA_OFFSET_FIRST:(APDU_DATA_OFFSET_FIRST + apdu_length)]
-            # Following chunk(s) of an apdu
-            else:
-                apdu_buffer += data[APDU_DATA_OFFSET_FOLLW:(APDU_DATA_OFFSET_FOLLW + (apdu_length - len(apdu_buffer)))]
-        # TODO: Handle this direction properly
+        # First chunk of an apdu
+        if (len(apdu_buffer) == 0):
+            apdu_length = int(data[APDU_DATA_LENGTH_OFFSET], 16) << 8 | \
+                          int(data[APDU_DATA_LENGTH_OFFSET + 1], 16)
+            apdu_buffer += data[APDU_DATA_OFFSET_FIRST:(APDU_DATA_OFFSET_FIRST + apdu_length)]
+
+        # Following chunk(s) of an apdu
         else:
-            apdu_buffer = data
-            apdu_length = len(apdu_buffer)
+            apdu_buffer += data[APDU_DATA_OFFSET_FOLLW:(APDU_DATA_OFFSET_FOLLW + (apdu_length - len(apdu_buffer)))]
 
         if (len(apdu_buffer) == apdu_length):
             print('[%s] HID %s %s' % (packet.sniff_time, direction, "".join(apdu_buffer)))
