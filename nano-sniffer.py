@@ -27,6 +27,15 @@ if os.geteuid() != 0:
     print('Error: root required !')
     exit(1)
 
+# Data offset
+APDU_DATA_MAGIC_OFFSET = 2
+APDU_DATA_LENGTH_OFFSET = 5
+APDU_DATA_OFFSET_FIRST = 7
+APDU_DATA_OFFSET_FOLLW = 5
+
+APDU_MAGIC_VALUE = 0x5
+
+
 dev = usb.core.find(idVendor=0x2c97)
 if dev is None:
     print('Error: No Nano found !')
@@ -42,6 +51,9 @@ capture = pyshark.LiveCapture(interface='usbmon%d' % (dev.bus),
 
 signal.signal(signal.SIGINT, sigint_handler)
 
+apdu_buffer = []
+apdu_length = 0
+
 for packet in capture.sniff_continuously():
     timestamp = None
     direction = None
@@ -49,10 +61,31 @@ for packet in capture.sniff_continuously():
 
     try:
         if (int(packet.usb.endpoint_address_direction) == 0):
-            direction = 'OUT'
+            direction = '=>'
         else:
-            direction = 'IN'
+            direction = '<='
+
         data = packet.data.usb_capdata.split(":")
-        print('%s\t%s\t%s' % (packet.sniff_time, direction, str(data)))
+
+        # Sanity check (something is very wrong if this check fails)
+        if (int(data[APDU_DATA_MAGIC_OFFSET], 16) != APDU_MAGIC_VALUE):
+            print("Error unexpected value at magic offset! value != 0x%x\n" % (APDU_MAGIC_VALUE))
+            break
+
+        # First chunk of an apdu
+        if (len(apdu_buffer) == 0):
+            apdu_length = int(data[APDU_DATA_LENGTH_OFFSET], 16) << 8 | \
+                          int(data[APDU_DATA_LENGTH_OFFSET + 1], 16)
+            apdu_buffer += data[APDU_DATA_OFFSET_FIRST:(APDU_DATA_OFFSET_FIRST + apdu_length)]
+
+        # Following chunk(s) of an apdu
+        else:
+            apdu_buffer += data[APDU_DATA_OFFSET_FOLLW:(APDU_DATA_OFFSET_FOLLW + (apdu_length - len(apdu_buffer)))]
+
+        if (len(apdu_buffer) == apdu_length):
+            print('[%s] HID %s %s' % (packet.sniff_time, direction, "".join(apdu_buffer)))
+            # Reset states, so we treat the next chunk as a first one again
+            apdu_buffer = []
+            apdu_length = 0
     except:
         pass
