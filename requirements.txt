@@ -1,0 +1,3 @@
+pyshark>=0.4.0
+psutil>=5.9.0
+pyusb>=1.2.0
