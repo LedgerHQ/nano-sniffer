@@ -33,7 +33,11 @@ APDU_DATA_LENGTH_OFFSET = 5
 APDU_DATA_OFFSET_FIRST = 7
 APDU_DATA_OFFSET_FOLLW = 5
 
-APDU_MAGIC_VALUE = 0x5
+# Tag value
+APDU_TAG_GET_VERSION_ID = 0x00
+APDU_TAG_ALLOCATE_CHANNEL = 0x01
+APDU_TAG_ECHO_PING = 0x02
+APDU_TAG_DEFAULT = 0x5
 
 
 dev = usb.core.find(idVendor=0x2c97)
@@ -58,6 +62,7 @@ for packet in capture.sniff_continuously():
     timestamp = None
     direction = None
     data = None
+    tag = None
 
     try:
         if (int(packet.usb.endpoint_address_direction) == 0):
@@ -67,9 +72,13 @@ for packet in capture.sniff_continuously():
 
         data = packet.data.usb_capdata.split(":")
 
+        tag = int(data[APDU_DATA_MAGIC_OFFSET], 16);
         # Sanity check (something is very wrong if this check fails)
-        if (int(data[APDU_DATA_MAGIC_OFFSET], 16) != APDU_MAGIC_VALUE):
-            print("Error unexpected value at magic offset! value != 0x%x\n" % (APDU_MAGIC_VALUE))
+        if ((tag != APDU_TAG_GET_VERSION_ID) and
+            (tag != APDU_TAG_ALLOCATE_CHANNEL) and
+            (tag != APDU_TAG_ECHO_PING) and
+            (tag != APDU_TAG_DEFAULT)):
+            print("Error unexpected value at tag offset! (0x%x)\n" % (tag))
             break
 
         # First chunk of an apdu
