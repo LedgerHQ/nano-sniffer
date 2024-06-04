@@ -19,7 +19,7 @@ def sigint_handler(signum, frame):
     for child in children:
         try:
             child.send_signal(signal.SIGKILL)
-        except:
+        except Exception:
             pass
 
 
@@ -72,12 +72,12 @@ for packet in capture.sniff_continuously():
 
         data = packet.data.usb_capdata.split(":")
 
-        tag = int(data[APDU_DATA_MAGIC_OFFSET], 16);
+        tag = int(data[APDU_DATA_MAGIC_OFFSET], 16)
         # Sanity check (something is very wrong if this check fails)
-        if ((tag != APDU_TAG_GET_VERSION_ID) and
-            (tag != APDU_TAG_ALLOCATE_CHANNEL) and
-            (tag != APDU_TAG_ECHO_PING) and
-            (tag != APDU_TAG_DEFAULT)):
+        if tag not in (APDU_TAG_GET_VERSION_ID,
+                       APDU_TAG_ALLOCATE_CHANNEL,
+                       APDU_TAG_ECHO_PING,
+                       APDU_TAG_DEFAULT):
             print("Error unexpected value at tag offset! (0x%x)\n" % (tag))
             break
 
@@ -96,5 +96,5 @@ for packet in capture.sniff_continuously():
             # Reset states, so we treat the next chunk as a first one again
             apdu_buffer = []
             apdu_length = 0
-    except:
+    except Exception:
         pass
