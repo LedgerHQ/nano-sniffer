@@ -50,7 +50,7 @@ print('Nano found on Bus %d, Device %d' % (dev.bus, dev.address))
 # Load necessary kernel module (does nothing if already loaded)
 subprocess.call(['modprobe', 'usbmon'])
 
-capture = pyshark.LiveCapture(interface='usbmon%d' % (dev.bus - 1),
+capture = pyshark.LiveCapture(interface='usbmon0',
                               display_filter='usb.device_address == %d && usb.capdata' % (dev.address))
 
 signal.signal(signal.SIGINT, sigint_handler)
